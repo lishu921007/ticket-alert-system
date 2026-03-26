@@ -89,6 +89,21 @@ docker compose up -d --build
 - `GET /api/openapi.json`
 - `GET /api/open/docs`
 
+
+## 快速部署
+
+### 一键部署脚本
+
+```bash
+bash deploy.sh
+```
+
+### 详细部署说明
+
+请查看：
+
+- `DEPLOY.md`
+
 ## GitHub 后快速部署建议
 
 1. 克隆仓库
