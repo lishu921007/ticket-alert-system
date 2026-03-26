@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>稽查工单监控中心</title>
+  <style>
+    :root {
+      --bg: #f5f3ec;
+      --panel: rgba(255,255,255,.88);
+      --line: rgba(126,144,170,.16);
+      --text: #243041;
+      --muted: #667387;
+      --accent: #5B8F68;
+      --accent-2: #7B97B8;
+      --accent-3: #E8D56A;
+      --good: #5B8F68;
+      --warn: #D9993E;
+      --bad: #BC5A3C;
+      --shadow: 0 20px 60px rgba(71,87,110,.08);
+      --radius: 22px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif; color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(232,213,106,.16), transparent 24%),
+        radial-gradient(circle at right top, rgba(123,151,184,.12), transparent 28%),
+        linear-gradient(180deg, #fbfaf6 0%, #f5f3ec 52%, #eef2f3 100%);
+      min-height: 100vh;
+    }
+    .shell { max-width: 1520px; margin: 0 auto; padding: 28px 22px 44px; }
+    .hero, .card, .metric, .panel { background: var(--panel); border: 1px solid rgba(255,255,255,.78); box-shadow: var(--shadow); backdrop-filter: blur(10px); }
+    .hero {
+      position: relative; overflow: hidden;
+      border-radius: 34px; padding: 32px; margin-bottom: 24px;
+      background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(246,248,249,.84));
+      border: 1px solid rgba(255,255,255,.92);
+    }
+    .hero::before {
+      content:''; position:absolute; left:-40px; top:-40px; width:180px; height:180px;
+      background: radial-gradient(circle, rgba(239,219,86,.24), transparent 68%);
+      pointer-events:none;
+    }
+    .hero::after {
+      content:''; position:absolute; right:-36px; top:-24px; width:180px; height:180px;
+      background: radial-gradient(circle, rgba(125,157,198,.18), transparent 70%);
+      pointer-events:none;
+    }
+    .eyebrow {
+      position: relative; z-index: 1;
+      display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 999px;
+      background: rgba(89,165,93,.12); color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: .08em;
+      border: 1px solid rgba(89,165,93,.16);
+    }
+    h1 {
+      position: relative; z-index: 1;
+      margin: 18px 0 14px; font-size: clamp(34px, 4.2vw, 56px); line-height: 1.02; letter-spacing: -.04em;
+      font-weight: 900;
+    }
+    h2,h3 { margin: 0; }
+    .sub, .desc, .hint { color: var(--muted); }
+    .sub { line-height: 1.8; max-width: 840px; margin-bottom: 18px; }
+    .desc, .hint { font-size: 13px; line-height: 1.7; }
+    .hero-actions { position: relative; z-index: 1; display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+    .actions, .tabs, .filters, .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+    .metric {
+      position: relative; overflow: hidden;
+      border-radius: 24px; padding: 24px;
+      background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(248,250,249,.82));
+      border: 1px solid rgba(255,255,255,.94);
+    }
+    .metric::after {
+      content:''; position:absolute; right:-20px; bottom:-26px; width:110px; height:110px;
+      background: radial-gradient(circle, rgba(125,157,198,.14), transparent 68%);
+      pointer-events:none;
+    }
+    .metric .k {
+      color: #596679; font-size: 12px; margin-bottom: 18px; font-weight: 800; letter-spacing: .10em; text-transform: uppercase;
+    }
+    .metric .v {
+      font-size: 46px; font-weight: 900; line-height: .94; margin-bottom: 0; letter-spacing: -.04em;
+    }
+    .metric .s { display:none; }
+    .card { border-radius: 26px; padding: 22px; margin-bottom: 22px; }
+    .section-title { display: flex; justify-content: space-between; align-items: end; gap: 12px; margin-bottom: 14px; }
+    .notify-grid, .ops-grid, .detail-grid, .analytics-grid, .split-grid { display:grid; gap:16px; }
+    .notify-grid { grid-template-columns: 1.15fr 1fr 1fr; }
+    .ops-grid { grid-template-columns: 1fr 1fr; }
+    .detail-grid { grid-template-columns: 1.2fr .8fr; }
+    .analytics-grid { grid-template-columns: 1fr 1fr; align-items:start; }
+    .split-grid { grid-template-columns: 1fr 1fr; }
+    .panel {
+      border-radius: 22px; padding: 18px;
+      background: linear-gradient(135deg, rgba(255,255,255,.90), rgba(247,249,250,.84));
+      border: 1px solid rgba(255,255,255,.92);
+    }
+    .mapping-row, .rule-row, .dir-row { display:grid; gap:10px; margin-bottom:10px; align-items:center; }
+    .form-section-title { font-size: 15px; font-weight: 800; margin-bottom: 10px; color: #46556a; }
+    .mapping-row { grid-template-columns: 1fr 1.2fr auto; }
+    .rule-row { grid-template-columns: 1fr 110px 1.1fr auto; }
+    .dir-row { grid-template-columns: 1fr 1fr 1fr auto; }
+    .small-grid { display:grid; grid-template-columns: repeat(2,1fr); gap:10px; }
+    .summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+    .summary-box { background: rgba(255,255,255,.72); border: 1px solid rgba(255,255,255,.82); border-radius: 18px; padding: 14px; }
+    .summary-box .k { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+    .summary-box .v { font-size: 24px; font-weight: 800; }
+    input, select, button, textarea { min-height: 44px; padding: 10px 14px; border-radius: 14px; font-size: 14px; border: 1px solid var(--line); }
+    input, select, textarea { background: #fff; color: var(--text); }
+    textarea { width: 100%; min-height: 96px; resize: vertical; }
+    button { cursor: pointer; color: #fff; border: none; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: 0 10px 24px rgba(89,165,93,.18); }
+    button.ghost { background: rgba(255,255,255,.86); color: var(--text); border: 1px solid var(--line); box-shadow: none; }
+    button.ghost.subtle {
+      background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(247,249,250,.88));
+      border: 1px solid rgba(126,144,170,.14);
+      color: #506174;
+      font-weight: 700;
+    }
+    button.secondary { background: linear-gradient(135deg, var(--accent-2), #5b7fa8); box-shadow: 0 10px 24px rgba(125,157,198,.24); }
+    button.warn { background: linear-gradient(135deg, var(--accent-3), var(--warn)); color:#5f3b14; }
+    button.tab { background: rgba(255,255,255,.78); color: var(--muted); border: 1px solid var(--line); box-shadow: none; }
+    button.tab.active { background: linear-gradient(135deg, var(--accent-3), var(--warn)); color: #5f3b14; box-shadow: 0 10px 22px rgba(236,162,63,.24); }
+    .table-wrap {
+      overflow: auto; border-radius: 22px; border: 1px solid rgba(126,144,170,.12);
+      background: linear-gradient(180deg, rgba(255,255,255,.84), rgba(249,251,250,.76));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.74);
+    }
+    table { width: 100%; min-width: 1080px; border-collapse: separate; border-spacing: 0; }
+    th, td { padding: 16px 14px; border-top: 1px solid rgba(125,157,198,.09); text-align: left; font-size: 14px; vertical-align: top; }
+    th {
+      border-top: none; color: #5c687b; font-size: 12px; letter-spacing: .08em; font-weight: 800;
+      background: rgba(247,250,251,.96); position: sticky; top: 0; z-index: 1;
+    }
+    th.sortable { cursor: pointer; }
+    th.sortable:hover { color: var(--accent); }
+    tr:hover td { background: rgba(241,249,244,.92); }
+    .topic { font-weight: 800; max-width: 360px; line-height: 1.65; }
+    .mono { font-variant-numeric: tabular-nums; }
+    .days { font-weight: 800; }
+    .days.normal { color: var(--good); }
+    .days.warning { color: var(--warn); }
+    .days.overdue { color: var(--bad); }
+    .badge { display: inline-flex; padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+    .badge.normal { background: rgba(89,165,93,.14); color: var(--good); }
+    .badge.warning { background: rgba(236,162,63,.18); color: #9a6113; }
+    .badge.overdue { background: rgba(202,77,42,.14); color: var(--bad); }
+    .badge.closed { background: rgba(125,157,198,.18); color: #48627f; }
+    .empty { padding: 34px 14px; text-align: center; color: var(--muted); }
+    .log { min-height: 90px; white-space: pre-wrap; border-radius: 18px; padding: 14px; background: linear-gradient(135deg, #2f4460, #496381); color: #eef7ff; font-size: 13px; line-height: 1.8; }
+    .list { display:grid; gap:10px; }
+    .list-item { background: rgba(255,255,255,.72); border: 1px solid rgba(255,255,255,.82); border-radius: 16px; padding: 12px; }
+    .compact-item { padding: 10px 12px; border-radius: 14px; }
+    .pagination { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin-top:14px; }
+    .pager { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .pager-info { color: var(--muted); font-size: 12px; }
+    .rank-badges { display:flex; flex-wrap:wrap; gap:8px; margin-top: 8px; }
+    .side-drawer {
+      position: fixed; top: 0; right: 0; width: min(620px, 96vw); height: 100vh; z-index: 40;
+      background: linear-gradient(180deg, rgba(255,253,245,.98), rgba(244,249,250,.98));
+      border-left: 1px solid rgba(125,157,198,.18); box-shadow: -24px 0 60px rgba(45,52,64,.12);
+      transform: translateX(100%); transition: transform .28s ease; padding: 22px; overflow: auto;
+    }
+    .side-drawer.open { transform: translateX(0); }
+    .drawer-backdrop {
+      position: fixed; inset: 0; background: rgba(45,52,64,.18); backdrop-filter: blur(2px); z-index: 35; display:none;
+    }
+    .drawer-backdrop.open { display:block; }
+    .drawer-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom: 14px; }
+    .drawer-section { background: rgba(255,255,255,.72); border: 1px solid rgba(255,255,255,.84); border-radius: 18px; padding: 14px; margin-bottom: 14px; }
+    @keyframes fadeInRow {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .detail-hero {
+      position: relative; overflow: hidden;
+      background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(248,252,249,.88));
+      border: 1px solid rgba(255,255,255,.92); border-radius: 22px; padding: 16px; margin-bottom: 14px;
+      box-shadow: 0 16px 36px rgba(89,165,93,.10);
+    }
+    .detail-hero::after {
+      content:''; position:absolute; right:-22px; top:-20px; width:120px; height:120px;
+      background: radial-gradient(circle, rgba(125,157,198,.22), transparent 68%);
+      pointer-events:none;
+    }
+    .detail-title-main { font-size: 22px; font-weight: 800; line-height: 1.4; margin-bottom: 10px; padding-right: 42px; }
+    .detail-status-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom: 10px; }
+    .detail-meta-grid { display:grid; grid-template-columns: repeat(2, 1fr); gap:10px; }
+    .meta-chip { background: rgba(255,255,255,.82); border:1px solid rgba(255,255,255,.9); border-radius: 14px; padding: 10px 12px; }
+    .meta-chip .k { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+    .meta-chip .v { font-size: 14px; font-weight: 700; word-break: break-word; }
+    .timeline { display:grid; gap:10px; }
+    .timeline-item {
+      position: relative; padding: 12px 12px 12px 16px; border-radius: 16px;
+      background: rgba(255,255,255,.74); border:1px solid rgba(255,255,255,.84);
+    }
+    .timeline-item::before {
+      content:''; position:absolute; left:0; top:14px; bottom:14px; width:4px; border-radius:999px; background: linear-gradient(180deg, var(--accent), var(--accent-2));
+    }
+    .analytics-hero {
+      display:grid; grid-template-columns: 1fr; gap:18px; margin-bottom: 18px;
+    }
+    .analytics-card {
+      position: relative; overflow: hidden;
+      background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(247,249,250,.86));
+      border: 1px solid rgba(255,255,255,.94);
+      border-radius: 22px; padding: 20px;
+      box-shadow: 0 16px 40px rgba(71,87,110,.08);
+    }
+    .analytics-card::before {
+      content: ''; position:absolute; inset:auto auto -30px -20px; width:140px; height:140px;
+      background: radial-gradient(circle, rgba(239,219,86,.28), transparent 65%);
+      pointer-events:none;
+    }
+    .analytics-card.blue::before {
+      inset:-24px -18px auto auto;
+      background: radial-gradient(circle, rgba(125,157,198,.24), transparent 68%);
+    }
+    .analytics-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+    .analytics-sub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+    .analytics-big {
+      display:flex; align-items:flex-end; gap:10px; margin-bottom: 12px;
+    }
+    .analytics-big .num { font-size: 42px; font-weight: 800; line-height: 1; }
+    .analytics-big .label { color: var(--muted); font-size: 13px; padding-bottom: 6px; }
+    .analytics-pills { display:flex; flex-wrap:wrap; gap:8px; }
+    .pill {
+      display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px;
+      font-size:12px; font-weight:700; border:1px solid rgba(125,157,198,.16); background: rgba(255,255,255,.78);
+    }
+    .pill .dot { width:8px; height:8px; border-radius:999px; display:inline-block; }
+    .pill.good .dot { background: var(--good); }
+    .pill.warn .dot { background: var(--warn); }
+    .pill.bad .dot { background: var(--bad); }
+    .rank-list { display:grid; gap:12px; }
+    .rank-item {
+      display:grid; grid-template-columns: 44px 1fr auto; align-items:center; gap:12px;
+      padding: 14px 15px; border-radius: 18px;
+      background: linear-gradient(135deg, rgba(255,255,255,.84), rgba(248,251,249,.90));
+      border: 1px solid rgba(255,255,255,.92);
+    }
+    .rank-no {
+      width: 44px; height: 44px; border-radius: 14px; display:flex; align-items:center; justify-content:center;
+      font-weight: 800; color: #52657e; background: linear-gradient(135deg, rgba(123,151,184,.16), rgba(232,213,106,.18));
+    }
+    .rank-main { min-width: 0; }
+    .rank-name { font-weight: 800; margin-bottom: 6px; }
+    .rank-meta { color: var(--muted); font-size: 12px; display:flex; flex-wrap:wrap; gap:10px; }
+    .rank-total { text-align:right; }
+    .rank-total .n { font-size: 24px; font-weight: 800; line-height: 1; }
+    .rank-total .t { color: var(--muted); font-size: 12px; margin-top: 4px; }
+    .mini-bars { display:flex; gap:6px; margin-top:10px; }
+    .mini-bar { height: 8px; border-radius: 999px; background: rgba(125,157,198,.12); overflow:hidden; flex:1; }
+    .mini-bar > span { display:block; height:100%; border-radius: 999px; }
+    .mini-bar.overdue > span { background: linear-gradient(90deg, #CA4D2A, #ECA23F); }
+    .mini-bar.warning > span { background: linear-gradient(90deg, #EFDB56, #ECA23F); }
+    .mini-bar.normal > span { background: linear-gradient(90deg, #59A55D, #7D9DC6); }
+    .kv { display:grid; grid-template-columns: 110px 1fr; gap:8px; font-size:14px; margin-bottom:8px; }
+    .muted { color: var(--muted); }
+    .divider { height:1px; background: var(--line); margin: 12px 0; }
+    @media (max-width: 1100px) { .grid, .summary-row, .notify-grid, .ops-grid, .detail-grid, .analytics-grid, .split-grid, .analytics-hero { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 860px) { .notify-grid, .ops-grid, .detail-grid, .analytics-grid, .split-grid, .summary-row, .grid, .small-grid, .analytics-hero { grid-template-columns: 1fr; } .mapping-row, .rule-row, .dir-row, .rank-item { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) { .shell { padding: 16px 12px 28px; } .hero, .card, .metric, .panel { border-radius: 18px; } .actions, .tabs, .filters, .row { flex-direction: column; align-items: stretch; } input, select, button, textarea { width: 100%; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="eyebrow">OTW 智能预警</div>
+      <h1>稽查工单监控中心</h1>
+      <div class="hero-actions">
+        <input type="file" id="fileInput" accept=".xls,.xlsx,.csv" />
+        <button onclick="previewImport()">导入预校验</button>
+        <button onclick="uploadFile()">上传并导入</button>
+        <button class="secondary" onclick="runReminders()">立即执行提醒</button>
+        <button class="ghost" onclick="exportCurrentView()">导出当前表格</button>
+      </div>
+    </section>
+
+    <section class="grid" id="summary"></section>
+
+    <section class="card">
+      <div class="section-title"><div><h2>趋势分析 / 排行看板</h2></div></div>
+      <div class="analytics-hero">
+        <div class="analytics-card">
+          <div class="analytics-title">整体风险概览</div>
+          <div class="analytics-sub">当前风险分布</div>
+          <div class="analytics-big">
+            <div class="num" id="riskTotal">0</div>
+            <div class="label">在监控工单</div>
+          </div>
+          <div class="analytics-pills">
+            <div class="pill bad"><span class="dot"></span><span>超期 <strong id="riskOverdue">0</strong></span></div>
+            <div class="pill warn"><span class="dot"></span><span>预警 <strong id="riskWarning">0</strong></span></div>
+            <div class="pill good"><span class="dot"></span><span>正常 <strong id="riskNormal">0</strong></span></div>
+          </div>
+          <div class="mini-bars" style="margin-top:16px;">
+            <div class="mini-bar overdue"><span id="riskBarOverdue" style="width:0%"></span></div>
+            <div class="mini-bar warning"><span id="riskBarWarning" style="width:0%"></span></div>
+            <div class="mini-bar normal"><span id="riskBarNormal" style="width:0%"></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="analytics-grid">
+        <div class="panel">
+          <h3 style="margin-bottom:10px;">班组分布</h3>
+          
+          <div id="teamStats" class="rank-list"></div>
+        </div>
+        <div class="panel">
+          <h3 style="margin-bottom:10px;">负责人排行</h3>
+          
+          <div id="ownerStats" class="rank-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-title"><div><h2>邮件通知配置 / 升级催办</h2></div></div>
+      <div class="notify-grid">
+        <div class="panel">
+          <div class="filters" style="margin-bottom:12px;">
+            <input id="senderName" placeholder="发件人名称" />
+            <input id="senderEmail" placeholder="发件人邮箱" />
+          </div>
+          <div class="row" style="margin-bottom:12px;"><input type="checkbox" id="autoNotifyEnabled" style="min-height:auto; width:auto;" /><label for="autoNotifyEnabled">启用自动定时通知</label></div>
+          <div class="hint">系统会对前置预警和超期工单按规则自动执行催办。</div>
+          <div class="divider"></div>
+          <div class="form-section-title">负责人邮箱映射</div>
+          <div id="recipientList"></div>
+          <div class="actions" style="margin-top:12px;"><button class="ghost subtle" onclick="addRecipientRow()">新增收件人</button></div>
+        </div>
+        <div class="panel">
+          <div class="section-title" style="margin-bottom:10px;"><div><h3>升级催办规则</h3></div><button class="ghost subtle" onclick="addRuleRow()">新增规则</button></div>
+          <div id="ruleList"></div>
+        </div>
+        <div class="panel">
+          <h3 style="margin-bottom:10px;">通知记录中心</h3>
+          <div class="hint" style="margin-bottom:10px;">通知记录按分页展示，避免列表过长。</div>
+          <div id="notificationList" class="list"></div>
+          <div class="pagination">
+            <div class="pager-info" id="notificationPageInfo">-</div>
+            <div class="pager">
+              <button class="ghost" onclick="changeNotificationPage(-1)">上一页</button>
+              <button class="ghost" onclick="changeNotificationPage(1)">下一页</button>
+            </div>
+          </div>
+          <div class="actions" style="margin-top:12px;"><button onclick="saveNotificationSettings()">保存通知配置</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-title"><div><h2>负责人 / 班组维表</h2></div></div>
+      <div class="split-grid">
+        <div class="panel">
+          <div class="section-title" style="margin-bottom:10px;"><div><h3>负责人管理</h3></div><button class="ghost subtle" onclick="addOwnerRow()">新增负责人</button></div>
+          <div id="ownerDirectory"></div>
+        </div>
+        <div class="panel">
+          <div class="section-title" style="margin-bottom:10px;"><div><h3>班组管理</h3></div><button class="ghost subtle" onclick="addTeamRow()">新增班组</button></div>
+          <div id="teamDirectory"></div>
+        </div>
+      </div>
+      <div class="actions" style="margin-top:12px;"><button onclick="saveDirectory()">保存维表</button></div>
+    </section>
+
+    <section class="card">
+      <div class="section-title"><div><h2>工单列表</h2></div></div>
+      <div class="summary-row">
+        <div class="summary-box"><div class="k">当前页面工单数</div><div class="v" id="currentCount">0</div></div>
+        <div class="summary-box"><div class="k">平均剩余天数</div><div class="v" id="avgDays">--</div></div>
+        <div class="summary-box"><div class="k">最紧急工单数</div><div class="v" id="urgentCount">0</div></div>
+        <div class="summary-box"><div class="k">已关闭工单数</div><div class="v" id="closedCount">0</div></div>
+      </div>
+      <div class="tabs" style="margin-bottom:12px;">
+        <button class="tab active" onclick="switchTab('all', this)">全部工单</button>
+        <button class="tab" onclick="switchTab('warning', this)">前置预警</button>
+        <button class="tab" onclick="switchTab('overdue', this)">超期工单</button>
+        <button class="tab" onclick="switchTab('normal', this)">正常工单</button>
+      </div>
+      <div class="filters" style="margin-bottom:16px;">
+        <input id="searchInput" placeholder="搜索主题名称 / 户号 / 户名 / 派发人 / 班组" oninput="ticketPage=1; renderTable()" style="flex:1; min-width: 260px;" />
+        <select id="ownerFilter" onchange="ticketPage=1; renderTable()"><option value="">全部派发人</option></select>
+        <select id="teamFilter" onchange="ticketPage=1; renderTable()"><option value="">全部班组/所</option></select>
+        <select id="rectifyFilter" onchange="ticketPage=1; renderTable()"><option value="">全部整改情况</option></select>
+        <select id="refreshSelect" onchange="setupAutoRefresh()"><option value="15000">15 秒刷新</option><option value="30000" selected>30 秒刷新</option><option value="60000">60 秒刷新</option><option value="0">关闭自动刷新</option></select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="sortable" onclick="setSort('title')">主题名称</th>
+              <th class="sortable" onclick="setSort('accountNo')">户号</th>
+              <th class="sortable" onclick="setSort('accountName')">户名</th>
+              <th class="sortable" onclick="setSort('createdAt')">派发时间</th>
+              <th class="sortable" onclick="setSort('owner')">负责人</th>
+              <th class="sortable" onclick="setSort('team')">班组/所</th>
+              <th class="sortable" onclick="setSort('remainingDays')">剩余天数</th>
+              <th>闭环状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="ticketTable"></tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <div class="pager-info" id="ticketPageInfo">-</div>
+        <div class="pager">
+          <select id="pageSizeSelect" onchange="changeTicketPageSize()">
+            <option value="10">10条/页</option>
+            <option value="20" selected>20条/页</option>
+            <option value="50">50条/页</option>
+            <option value="100">100条/页</option>
+          </select>
+          <button class="ghost" onclick="goTicketPage('first')">首页</button>
+          <button class="ghost" onclick="goTicketPage('prev')">上一页</button>
+          <button class="ghost" onclick="goTicketPage('next')">下一页</button>
+          <button class="ghost" onclick="goTicketPage('last')">末页</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="drawerBackdrop" class="drawer-backdrop" onclick="closeDrawer()"></div>
+    <aside id="detailDrawer" class="side-drawer">
+      <div class="drawer-head">
+        <div>
+          <h2 style="margin-bottom:6px;">工单详情 / 处理闭环</h2>
+          
+        </div>
+        <button class="ghost" onclick="closeDrawer()">关闭</button>
+      </div>
+      <div id="detailEmpty" class="empty">请先从上方工单列表中选择一条工单。</div>
+      <div id="ticketDetail" style="display:none;">
+        <div class="detail-hero">
+          <div id="detailTitle" class="detail-title-main">-</div>
+          <div id="detailStatusRow" class="detail-status-row"></div>
+          <div id="detailMeta" class="detail-meta-grid"></div>
+        </div>
+        <div class="drawer-section">
+          <h3 style="margin-bottom:10px;">跟进记录</h3>
+          <div id="followUpList" class="list"></div>
+          <div class="divider"></div>
+          <textarea id="followUpContent" placeholder="填写新的跟进记录"></textarea>
+          <div class="row" style="margin-top:10px;">
+            <input id="followedBy" placeholder="跟进人" />
+            <label><input type="checkbox" id="followUpImportant" style="min-height:auto; width:auto;" /> 重要</label>
+            <button onclick="addFollowUp()">新增跟进</button>
+          </div>
+        </div>
+        <div class="drawer-section">
+          <h3 style="margin-bottom:10px;">处理 / 复核 / 关闭</h3>
+          <textarea id="processingResult" placeholder="填写处理结果"></textarea>
+          <div class="row" style="margin-top:10px;"><input id="processRectifyStatus" placeholder="整改情况，例如：已整改 / 整改中" /><button onclick="saveProcessing()">保存处理结果</button></div>
+          <div class="divider"></div>
+          <div class="small-grid">
+            <input id="reviewStatus" placeholder="复核状态，例如：通过 / 驳回" />
+            <input id="reviewedBy" placeholder="复核人" />
+          </div>
+          <textarea id="reviewComment" placeholder="复核意见"></textarea>
+          <div class="actions" style="margin-top:10px;"><button class="secondary" onclick="saveReview()">提交复核</button></div>
+          <div class="divider"></div>
+          <input id="closedBy" placeholder="关闭人" />
+          <textarea id="closeResult" placeholder="关闭说明"></textarea>
+          <div class="actions" style="margin-top:10px;"><button class="warn" onclick="closeTicket(true)">关闭工单</button><button class="ghost" onclick="closeTicket(false)">重新打开</button></div>
+        </div>
+        <div class="drawer-section">
+          <h3 style="margin-bottom:10px;">通知历史</h3>
+          <div id="detailNotificationList" class="list"></div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="card">
+      <div class="section-title"><div><h2>系统日志</h2><div class="desc">上传、刷新、提醒触发结果。</div></div></div>
+      <div id="log" class="log">等待操作...</div>
+    </section>
+  </div>
+
+  <script>
+    let dashboardData = { summary: {}, tickets: [], analytics: { teamStats: [], ownerStats: [] } };
+    let notificationSettings = { senderName: '', senderEmail: '', recipientMappings: [], autoNotifyEnabled: true, escalationRules: [] };
+    let directoryData = { owners: [], teams: [] };
+    let notifications = [];
+    let currentTab = 'all';
+    let refreshTimer = null;
+    let sortKey = 'remainingDays';
+    let sortOrder = 'asc';
+    let activeTicketId = null;
+    let ticketPage = 1;
+    let ticketPageSize = 20;
+    let notificationPage = 1;
+    const notificationPageSize = 8;
+    const tabNameMap = { all: '全部', warning: '前置预警', overdue: '超期', normal: '正常' };
+
+    function log(message) { const el = document.getElementById('log'); if (el) el.textContent = `[${new Date().toLocaleString()}] ${message}`; }
+    function formatDate(v) { if (!v) return '-'; return new Date(v).toLocaleString(); }
+    function escapeAttr(value) { return String(value || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function statusBadge(status) { const text = { normal:'正常', warning:'预警', overdue:'超期' }[status] || status; return `<span class="badge ${status}">${text}</span>`; }
+    function closeBadge(ticket) { return ticket.closed ? '<span class="badge closed">已关闭</span>' : '<span class="badge normal">处理中</span>'; }
+
+    function renderSummary() {
+      const s = dashboardData.summary || {};
+      document.getElementById('summary').innerHTML = `
+        <div class="metric"><div class="k">总工单</div><div class="v">${s.total || 0}</div></div>
+        <div class="metric"><div class="k">超期工单</div><div class="v" style="color:var(--bad)">${s.overdue || 0}</div></div>
+        <div class="metric"><div class="k">前置预警</div><div class="v" style="color:var(--warn)">${s.warning || 0}</div></div>
+        <div class="metric"><div class="k">正常工单</div><div class="v" style="color:var(--good)">${s.normal || 0}</div></div>
+      `;
+    }
+
+    function renderAnalyticsOverview() {
+      const s = dashboardData.summary || {};
+      const total = Number(s.total || 0);
+      const overdue = Number(s.overdue || 0);
+      const warning = Number(s.warning || 0);
+      const normal = Number(s.normal || 0);
+      const pct = (v) => total ? `${Math.max(6, (v / total) * 100).toFixed(1)}%` : '0%';
+      document.getElementById('riskTotal').textContent = total;
+      document.getElementById('riskOverdue').textContent = overdue;
+      document.getElementById('riskWarning').textContent = warning;
+      document.getElementById('riskNormal').textContent = normal;
+      document.getElementById('riskBarOverdue').style.width = pct(overdue);
+      document.getElementById('riskBarWarning').style.width = pct(warning);
+      document.getElementById('riskBarNormal').style.width = pct(normal);
+    }
+
+    function renderStatsList(id, rows, keyName) {
+      const el = document.getElementById(id);
+      if (!rows?.length) { el.innerHTML = '<div class="empty">暂无数据</div>'; return; }
+      const max = Math.max(...rows.map(row => Number(row.total || 0)), 1);
+      el.innerHTML = rows.map((row, index) => {
+        const overduePct = Math.min(100, ((Number(row.overdue || 0) / max) * 100));
+        const warningPct = Math.min(100, ((Number(row.warning || 0) / max) * 100));
+        const normalPct = Math.min(100, ((Number(row.normal || 0) / max) * 100));
+        return `
+          <div class="rank-item">
+            <div class="rank-no">${index + 1}</div>
+            <div class="rank-main">
+              <div class="rank-name">${row[keyName]}</div>
+              <div class="rank-badges">
+                ${statusBadge('overdue')}<span class="muted">${row.overdue}</span>
+                ${statusBadge('warning')}<span class="muted">${row.warning}</span>
+                ${statusBadge('normal')}<span class="muted">${row.normal}</span>
+              </div>
+              <div class="mini-bars">
+                <div class="mini-bar overdue"><span style="width:${overduePct}%"></span></div>
+                <div class="mini-bar warning"><span style="width:${warningPct}%"></span></div>
+                <div class="mini-bar normal"><span style="width:${normalPct}%"></span></div>
+              </div>
+            </div>
+            <div class="rank-total"><div class="n">${row.total}</div><div class="t">总工单</div></div>
+          </div>`;
+      }).join('');
+    }
+
+    function renderRecipientList() {
+      const box = document.getElementById('recipientList');
+      const mappings = notificationSettings.recipientMappings || [];
+      if (!mappings.length) { box.innerHTML = '<div class="hint">还没有配置负责人邮箱映射。</div>'; return; }
+      box.innerHTML = mappings.map((item, index) => `
+        <div class="mapping-row">
+          <input placeholder="负责人姓名" value="${escapeAttr(item.owner)}" onchange="updateRecipient(${index}, 'owner', this.value)" />
+          <input placeholder="负责人邮箱" value="${escapeAttr(item.email)}" onchange="updateRecipient(${index}, 'email', this.value)" />
+          <button class="ghost" onclick="removeRecipient(${index})">删除</button>
+        </div>`).join('');
+    }
+    function renderRuleList() {
+      const box = document.getElementById('ruleList');
+      const rules = notificationSettings.escalationRules || [];
+      if (!rules.length) { box.innerHTML = '<div class="hint">暂无升级催办规则。</div>'; return; }
+      box.innerHTML = rules.map((item, index) => `
+        <div class="rule-row">
+          <select onchange="updateRule(${index}, 'type', this.value)"><option value="warning" ${item.type==='warning'?'selected':''}>前置预警</option><option value="overdue" ${item.type==='overdue'?'selected':''}>超期</option></select>
+          <input type="number" min="0" value="${item.afterDays ?? 0}" onchange="updateRule(${index}, 'afterDays', Number(this.value))" />
+          <input placeholder="收件范围：owner,teamLead,admin" value="${(item.recipients||[]).join(',')}" onchange="updateRule(${index}, 'recipients', this.value.split(',').map(v=>v.trim()).filter(Boolean))" />
+          <button class="ghost" onclick="removeRule(${index})">删除</button>
+        </div>
+        <div class="hint" style="margin:-6px 0 10px;">${escapeAttr(item.label || '')}</div>
+      `).join('');
+    }
+    function renderNotifications() {
+      const box = document.getElementById('notificationList');
+      const pageInfo = document.getElementById('notificationPageInfo');
+      if (!notifications.length) { box.innerHTML = '<div class="hint">暂无通知记录。</div>'; pageInfo.textContent = '暂无数据'; return; }
+      const totalPages = Math.max(1, Math.ceil(notifications.length / notificationPageSize));
+      notificationPage = Math.min(notificationPage, totalPages);
+      const start = (notificationPage - 1) * notificationPageSize;
+      const pageRows = notifications.slice(start, start + notificationPageSize);
+      box.innerHTML = pageRows.map(n => `<div class="list-item compact-item"><div><strong>${n.ticketNo || '-'}</strong> · ${escapeAttr(n.ruleLabel || n.type || '')}</div><div class="muted">${formatDate(n.createdAt)} · ${n.recipients?.join(', ') || '无收件人'} · ${n.result?.emailResult?.delivered ? '发送成功' : '发送失败'}</div></div>`).join('');
+      pageInfo.textContent = `第 ${notificationPage} / ${totalPages} 页 · 共 ${notifications.length} 条`;
+    }
+    function renderOwnerDirectory() {
+      const box = document.getElementById('ownerDirectory');
+      const rows = directoryData.owners || [];
+      if (!rows.length) { box.innerHTML = '<div class="hint">暂无负责人数据。</div>'; return; }
+      box.innerHTML = rows.map((item, index) => `<div class="dir-row"><input placeholder="负责人" value="${escapeAttr(item.name)}" onchange="updateOwnerRow(${index}, 'name', this.value)" /><input placeholder="邮箱" value="${escapeAttr(item.email)}" onchange="updateOwnerRow(${index}, 'email', this.value)" /><input placeholder="班组" value="${escapeAttr(item.team)}" onchange="updateOwnerRow(${index}, 'team', this.value)" /><button class="ghost" onclick="removeOwnerRow(${index})">删除</button></div>`).join('');
+    }
+    function renderTeamDirectory() {
+      const box = document.getElementById('teamDirectory');
+      const rows = directoryData.teams || [];
+      if (!rows.length) { box.innerHTML = '<div class="hint">暂无班组数据。</div>'; return; }
+      box.innerHTML = rows.map((item, index) => `<div class="dir-row"><input placeholder="班组" value="${escapeAttr(item.name)}" onchange="updateTeamRow(${index}, 'name', this.value)" /><input placeholder="班组长邮箱" value="${escapeAttr(item.leaderEmail)}" onchange="updateTeamRow(${index}, 'leaderEmail', this.value)" /><input placeholder="管理员邮箱" value="${escapeAttr(item.adminEmail)}" onchange="updateTeamRow(${index}, 'adminEmail', this.value)" /><button class="ghost" onclick="removeTeamRow(${index})">删除</button></div>`).join('');
+    }
+
+    function fillNotificationSettings() {
+      document.getElementById('senderName').value = notificationSettings.senderName || '';
+      document.getElementById('senderEmail').value = notificationSettings.senderEmail || '';
+      document.getElementById('autoNotifyEnabled').checked = notificationSettings.autoNotifyEnabled !== false;
+      renderRecipientList(); renderRuleList();
+    }
+    function addRecipientRow() { (notificationSettings.recipientMappings ||= []).push({ owner:'', email:'' }); renderRecipientList(); }
+    function updateRecipient(index, key, value) { notificationSettings.recipientMappings[index][key] = value; }
+    function removeRecipient(index) { notificationSettings.recipientMappings.splice(index,1); renderRecipientList(); }
+    function addRuleRow() { (notificationSettings.escalationRules ||= []).push({ type:'overdue', afterDays:1, recipients:['owner'], label:'新增规则', enabled:true }); renderRuleList(); }
+    function updateRule(index, key, value) { notificationSettings.escalationRules[index][key] = value; }
+    function removeRule(index) { notificationSettings.escalationRules.splice(index,1); renderRuleList(); }
+    function addOwnerRow() { (directoryData.owners ||= []).push({ name:'', email:'', team:'' }); renderOwnerDirectory(); }
+    function updateOwnerRow(index, key, value) { directoryData.owners[index][key] = value; }
+    function removeOwnerRow(index) { directoryData.owners.splice(index,1); renderOwnerDirectory(); }
+    function addTeamRow() { (directoryData.teams ||= []).push({ name:'', leaderEmail:'', adminEmail:'' }); renderTeamDirectory(); }
+    function updateTeamRow(index, key, value) { directoryData.teams[index][key] = value; }
+    function removeTeamRow(index) { directoryData.teams.splice(index,1); renderTeamDirectory(); }
+
+    async function loadNotificationSettings() { const res = await fetch('/api/notification-settings'); const data = await res.json(); notificationSettings = data.settings || notificationSettings; fillNotificationSettings(); }
+    async function saveNotificationSettings() {
+      notificationSettings.senderName = document.getElementById('senderName').value.trim();
+      notificationSettings.senderEmail = document.getElementById('senderEmail').value.trim();
+      notificationSettings.autoNotifyEnabled = document.getElementById('autoNotifyEnabled').checked;
+      notificationSettings.recipientMappings = (notificationSettings.recipientMappings || []).map(v => ({ owner:(v.owner||'').trim(), email:(v.email||'').trim() })).filter(v => v.owner && v.email);
+      const res = await fetch('/api/notification-settings', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(notificationSettings) });
+      const data = await res.json(); notificationSettings = data.settings || notificationSettings; fillNotificationSettings(); log('通知配置与升级催办规则已保存。');
+    }
+    async function loadDirectory() { const res = await fetch('/api/directory'); const data = await res.json(); directoryData = data.directory || directoryData; renderOwnerDirectory(); renderTeamDirectory(); }
+    async function saveDirectory() {
+      directoryData.owners = (directoryData.owners || []).map(v => ({ name:(v.name||'').trim(), email:(v.email||'').trim(), team:(v.team||'').trim() })).filter(v => v.name);
+      directoryData.teams = (directoryData.teams || []).map(v => ({ name:(v.name||'').trim(), leaderEmail:(v.leaderEmail||'').trim(), adminEmail:(v.adminEmail||'').trim() })).filter(v => v.name);
+      const res = await fetch('/api/directory', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(directoryData) });
+      const data = await res.json(); directoryData = data.directory || directoryData; renderOwnerDirectory(); renderTeamDirectory(); log('负责人 / 班组维表已保存。');
+    }
+    async function loadNotifications() { const res = await fetch('/api/notifications'); const data = await res.json(); notifications = data.notifications || []; notificationPage = 1; renderNotifications(); }
+
+    function changeNotificationPage(delta) {
+      const totalPages = Math.max(1, Math.ceil((notifications.length || 0) / notificationPageSize));
+      notificationPage = Math.min(totalPages, Math.max(1, notificationPage + delta));
+      renderNotifications();
+    }
+
+    function switchTab(tab, btn) { currentTab = tab; ticketPage = 1; document.querySelectorAll('.tab').forEach(b => b.classList.remove('active')); if (btn) btn.classList.add('active'); renderTable(); }
+    function setSort(key) { if (sortKey === key) sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'; else { sortKey = key; sortOrder = (key === 'remainingDays' || key === 'createdAt') ? 'asc' : 'desc'; } renderTable(); }
+    function populateFilters() {
+      const fill = (id, label, values) => { const el = document.getElementById(id); const current = el.value; el.innerHTML = `<option value="">${label}</option>` + values.map(v => `<option value="${v}">${v}</option>`).join(''); el.value = values.includes(current) ? current : ''; };
+      fill('ownerFilter', '全部负责人', [...new Set(dashboardData.tickets.map(t => t.owner).filter(Boolean))].sort());
+      fill('teamFilter', '全部班组/所', [...new Set(dashboardData.tickets.map(t => t.team).filter(Boolean))].sort());
+      fill('rectifyFilter', '全部整改情况', [...new Set(dashboardData.tickets.map(t => t.rectificationStatus).filter(Boolean))].sort());
+    }
+    function getVisibleTickets() {
+      const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+      const owner = document.getElementById('ownerFilter').value; const team = document.getElementById('teamFilter').value; const rectify = document.getElementById('rectifyFilter').value;
+      const rows = dashboardData.tickets.filter(t => {
+        if (!(t.title || '').trim()) return false;
+        const tabMatch = currentTab === 'all' ? true : t.status === currentTab;
+        const keywordMatch = !keyword || [t.title, t.accountNo, t.accountName, t.owner, t.team].join(' ').toLowerCase().includes(keyword);
+        const ownerMatch = !owner || t.owner === owner; const teamMatch = !team || t.team === team; const rectifyMatch = !rectify || t.rectificationStatus === rectify;
+        return tabMatch && keywordMatch && ownerMatch && teamMatch && rectifyMatch;
+      });
+      return rows.sort((a, b) => { let result = 0; if (sortKey === 'remainingDays') result = (Number(a.remainingDays) || 999999) - (Number(b.remainingDays) || 999999); else if (sortKey === 'createdAt') result = new Date(a.createdAt || 0) - new Date(b.createdAt || 0); else result = String(a[sortKey] || '').localeCompare(String(b[sortKey] || ''), 'zh-CN'); return sortOrder === 'asc' ? result : -result; });
+    }
+    function renderPageSummary(rows) {
+      document.getElementById('currentCount').textContent = rows.length;
+      document.getElementById('avgDays').textContent = rows.length ? (rows.reduce((s, r) => s + (Number(r.remainingDays) || 0), 0) / rows.length).toFixed(2) : '--';
+      document.getElementById('urgentCount').textContent = rows.filter(r => r.remainingDays != null).slice(0, 3).length;
+      document.getElementById('closedCount').textContent = rows.filter(r => r.closed).length;
+    }
+    function renderTable() {
+      const rows = getVisibleTickets(); renderPageSummary(rows);
+      const tbody = document.getElementById('ticketTable');
+      const pageInfo = document.getElementById('ticketPageInfo');
+      if (!rows.length) { tbody.innerHTML = '<tr><td colspan="9" class="empty">当前筛选条件下没有工单</td></tr>'; pageInfo.textContent = '暂无数据'; return; }
+      const totalPages = Math.max(1, Math.ceil(rows.length / ticketPageSize));
+      ticketPage = Math.min(ticketPage, totalPages);
+      const start = (ticketPage - 1) * ticketPageSize;
+      const pageRows = rows.slice(start, start + ticketPageSize);
+      tbody.innerHTML = pageRows.map((t, index) => `
+        <tr style="animation: fadeInRow .18s ease ${index * 0.02}s both;">
+          <td><div class="topic">${t.title || '-'}</div><div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">${statusBadge(t.status)} ${closeBadge(t)}</div></td>
+          <td class="mono">${t.accountNo || '-'}</td>
+          <td>${t.accountName || '-'}</td>
+          <td class="mono">${formatDate(t.createdAt)}</td>
+          <td>${t.owner || '-'}</td>
+          <td>${t.team || '-'}</td>
+          <td><span class="days ${t.status}">${t.remainingDays ?? '-'}</span></td>
+          <td>${t.processingResult ? '已处理' : '待处理'} / ${t.reviewStatus || '未复核'}</td>
+          <td><button class="ghost subtle" onclick="openDetail('${t.id}')">详情</button></td>
+        </tr>`).join('');
+      pageInfo.textContent = `第 ${ticketPage} / ${totalPages} 页 · 当前筛选 ${rows.length} 条`;
+    }
+
+    async function loadDashboard(silent = false) {
+      const res = await fetch('/api/dashboard'); dashboardData = await res.json();
+      renderSummary(); renderAnalyticsOverview(); populateFilters(); renderTable();
+      renderStatsList('teamStats', dashboardData.analytics?.teamStats || [], 'team');
+      renderStatsList('ownerStats', dashboardData.analytics?.ownerStats || [], 'owner');
+      if (!silent) log(`已刷新：总 ${dashboardData.summary.total || 0} 条，超期 ${dashboardData.summary.overdue || 0} 条，预警 ${dashboardData.summary.warning || 0} 条，正常 ${dashboardData.summary.normal || 0} 条。`);
+    }
+
+    async function previewImport() {
+      const file = document.getElementById('fileInput').files[0]; if (!file) return log('请先选择一个表格文件。');
+      const formData = new FormData(); formData.append('file', file);
+      const res = await fetch('/api/import/preview', { method:'POST', body: formData }); const data = await res.json();
+      log(`预校验完成：共 ${data.totalRows || 0} 行，发现问题 ${data.issues?.length || 0} 条。${(data.issues || []).slice(0,5).map(v => `\n- 第${v.row}行 ${v.message}`).join('')}`);
+    }
+    async function uploadFile() {
+      const file = document.getElementById('fileInput').files[0]; if (!file) return log('请先选择一个表格文件。');
+      const formData = new FormData(); formData.append('file', file);
+      const res = await fetch('/api/import', { method:'POST', body: formData }); const data = await res.json();
+      log(`文件 ${data.fileName || file.name} 导入完成：新增 ${data.imported || 0} 条，可显示 ${data.visibleImported || 0} 条，隐藏空主题 ${data.hiddenEmptyTitle || 0} 条，跳过重复 ${data.skippedDuplicates || 0} 条。`);
+      await Promise.all([loadDashboard(true), loadNotifications()]);
+    }
+    async function runReminders() {
+      const res = await fetch('/api/run-reminders', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ force:true }) });
+      const data = await res.json(); log(`已手动执行提醒，本次触发 ${data.reminders?.length || 0} 条通知。`); await Promise.all([loadDashboard(true), loadNotifications()]);
+      if (activeTicketId) openDetail(activeTicketId);
+    }
+    function exportCurrentView() {
+      const rows = getVisibleTickets(); if (!rows.length) return log('当前页面没有可导出的表格数据。');
+      const headers = ['主题名称','户号','户名','派发时间','负责人','班组/所','剩余天数','整改情况','处理结果','复核状态','关闭状态'];
+      const csv = [headers, ...rows.map(t => [t.title, t.accountNo, t.accountName, formatDate(t.createdAt), t.owner, t.team, t.remainingDays, t.rectificationStatus, t.processingResult || '', t.reviewStatus || '', t.closed ? '已关闭' : '未关闭'])].map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `otw-${tabNameMap[currentTab]}-${rows.length}条-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url); log(`已导出当前页面表格：${tabNameMap[currentTab]}，共 ${rows.length} 条。`);
+    }
+    function setupAutoRefresh() { if (refreshTimer) clearInterval(refreshTimer); const ms = Number(document.getElementById('refreshSelect').value || 0); if (ms > 0) refreshTimer = setInterval(() => loadDashboard(true), ms); }
+
+    function changeTicketPageSize() { ticketPageSize = Number(document.getElementById('pageSizeSelect').value || 20); ticketPage = 1; renderTable(); }
+    function goTicketPage(action) {
+      const total = getVisibleTickets().length;
+      const totalPages = Math.max(1, Math.ceil(total / ticketPageSize));
+      if (action === 'first') ticketPage = 1;
+      if (action === 'prev') ticketPage = Math.max(1, ticketPage - 1);
+      if (action === 'next') ticketPage = Math.min(totalPages, ticketPage + 1);
+      if (action === 'last') ticketPage = totalPages;
+      renderTable();
+    }
+    function openDrawer() {
+      document.getElementById('detailDrawer').classList.add('open');
+      document.getElementById('drawerBackdrop').classList.add('open');
+    }
+    function closeDrawer() {
+      document.getElementById('detailDrawer').classList.remove('open');
+      document.getElementById('drawerBackdrop').classList.remove('open');
+    }
+
+    async function openDetail(ticketId) {
+      activeTicketId = ticketId;
+      const res = await fetch(`/api/tickets/${ticketId}`); const data = await res.json(); const t = data.ticket;
+      openDrawer();
+      document.getElementById('detailEmpty').style.display = 'none'; document.getElementById('ticketDetail').style.display = 'block';
+      document.getElementById('detailTitle').textContent = `${t.title || '-'} `;
+      document.getElementById('detailStatusRow').innerHTML = `${statusBadge(t.status)} ${closeBadge(t)} ${t.reviewStatus ? `<span class="badge warning">${escapeAttr(t.reviewStatus)}</span>` : ''}`;
+      document.getElementById('detailMeta').innerHTML = [
+        ['工单号', t.ticketNo || '-'], ['户号', t.accountNo || '-'], ['户名', t.accountName || '-'], ['负责人', t.owner || '-'], ['班组/所', t.team || '-'], ['派发时间', formatDate(t.createdAt)], ['回单时限', formatDate(t.receiptDeadline)], ['剩余天数', t.remainingDays ?? '-'], ['整改情况', t.rectificationStatus || '-'], ['处理结果', t.processingResult || '-'], ['关闭状态', t.closed ? '已关闭' : '未关闭'], ['复核状态', t.reviewStatus || '-']
+      ].map(([k,v]) => `<div class="meta-chip"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+      document.getElementById('processingResult').value = t.processingResult || '';
+      document.getElementById('processRectifyStatus').value = t.rectificationStatus || '';
+      document.getElementById('reviewStatus').value = t.reviewStatus || '';
+      document.getElementById('reviewComment').value = t.reviewComment || '';
+      document.getElementById('reviewedBy').value = t.reviewedBy || '';
+      document.getElementById('closeResult').value = t.closeResult || '';
+      document.getElementById('closedBy').value = t.closedBy || '';
+      document.getElementById('followUpList').innerHTML = (t.followUps || []).length ? `<div class="timeline">${t.followUps.map(f => `<div class="timeline-item"><div><strong>${f.followedBy || '未署名'}</strong> ${f.isImportant ? '<span class="badge warning">重要</span>' : ''}</div><div class="muted">${formatDate(f.createdAt)}</div><div style="margin-top:6px;">${escapeAttr(f.content)}</div></div>`).join('')}</div>` : '<div class="hint">暂无跟进记录。</div>';
+      document.getElementById('detailNotificationList').innerHTML = (t.notifications || []).length ? `<div class="timeline">${t.notifications.map(n => `<div class="timeline-item"><div><strong>${escapeAttr(n.ruleLabel || n.type || '')}</strong></div><div class="muted">${formatDate(n.createdAt)} · ${n.recipients?.join(', ') || '无收件人'} · ${n.result?.emailResult?.delivered ? '发送成功' : '发送失败'}</div></div>`).join('')}</div>` : '<div class="hint">暂无通知记录。</div>';
+    }
+    async function addFollowUp() {
+      if (!activeTicketId) return; const content = document.getElementById('followUpContent').value.trim(); if (!content) return log('请先填写跟进记录内容。');
+      await fetch(`/api/tickets/${activeTicketId}/follow-ups`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ content, followedBy: document.getElementById('followedBy').value.trim(), isImportant: document.getElementById('followUpImportant').checked }) });
+      document.getElementById('followUpContent').value = ''; document.getElementById('followUpImportant').checked = false; await openDetail(activeTicketId); log('已新增跟进记录。');
+    }
+    async function saveProcessing() {
+      if (!activeTicketId) return; await fetch(`/api/tickets/${activeTicketId}/process`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ processingResult: document.getElementById('processingResult').value.trim(), rectificationStatus: document.getElementById('processRectifyStatus').value.trim() }) }); await Promise.all([openDetail(activeTicketId), loadDashboard(true)]); log('处理结果已保存。');
+    }
+    async function saveReview() {
+      if (!activeTicketId) return; await fetch(`/api/tickets/${activeTicketId}/review`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ reviewStatus: document.getElementById('reviewStatus').value.trim(), reviewComment: document.getElementById('reviewComment').value.trim(), reviewedBy: document.getElementById('reviewedBy').value.trim() }) }); await Promise.all([openDetail(activeTicketId), loadDashboard(true)]); log('复核结果已保存。');
+    }
+    async function closeTicket(closed) {
+      if (!activeTicketId) return; await fetch(`/api/tickets/${activeTicketId}/close`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ closed, closeResult: document.getElementById('closeResult').value.trim(), closedBy: document.getElementById('closedBy').value.trim() }) }); await Promise.all([openDetail(activeTicketId), loadDashboard(true)]); log(closed ? '工单已关闭。' : '工单已重新打开。');
+    }
+
+    async function boot() {
+      await Promise.all([loadNotificationSettings(), loadDirectory(), loadNotifications(), loadDashboard()]);
+      setupAutoRefresh();
+    }
+    boot();
+  </script>
+</body>
+</html>

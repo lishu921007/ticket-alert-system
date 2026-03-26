@@ -1,0 +1,19 @@
+{
+  "name": "ticket-alert-system",
+  "version": "1.0.0",
+  "description": "一套完整的闭环工单时限预警系统，包含前端界面、后端API和文档归档功能。",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["ticket", "alert", "warning", "xlsx", "csv"],
+  "author": "OpenClaw",
+  "license": "MIT",
+  "dependencies": {
+    "dayjs": "^1.11.18",
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "nodemailer": "^7.0.6",
+    "xlsx": "^0.18.5"
+  }
+}
