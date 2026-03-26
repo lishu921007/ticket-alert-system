@@ -242,3 +242,57 @@ curl http://127.0.0.1:3210/api/health
 5. 配 HTTPS
 
 这样后面换服务器也非常快。
+
+
+---
+
+## 十一、离线一键部署（适合内网环境）
+
+如果目标机器不能联网，建议采用“外网打包、内网部署”的方式。
+
+### 1. 在可联网机器上生成离线包
+
+```bash
+bash offline-package.sh
+```
+
+生成结果位于：
+
+- `dist-offline/ticket-alert-system-offline-YYYYMMDD-HHMMSS.tar.gz`
+
+这个包会包含：
+
+- 项目代码
+- `node_modules`
+- `.env.example`
+- `offline-deploy.sh`
+
+### 2. 将离线包拷贝到内网机器
+
+例如通过：
+
+- U 盘
+- 堡垒机中转
+- SCP 到中转机后再导入
+
+### 3. 在内网机器上解压
+
+```bash
+tar -xzf ticket-alert-system-offline-*.tar.gz
+cd ticket-alert-system
+```
+
+### 4. 修改配置
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+### 5. 一键启动
+
+```bash
+bash offline-deploy.sh
+```
+
+如果内网机器装了 PM2，会自动使用 PM2；否则直接前台运行。

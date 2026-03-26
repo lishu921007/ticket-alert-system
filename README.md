@@ -104,6 +104,18 @@ bash deploy.sh
 
 - `DEPLOY.md`
 
+### 离线一键部署（内网）
+
+```bash
+bash offline-package.sh
+```
+
+生成离线包后，拷贝到内网机器执行：
+
+```bash
+bash offline-deploy.sh
+```
+
 ## GitHub 后快速部署建议
 
 1. 克隆仓库
